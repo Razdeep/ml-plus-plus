@@ -14,8 +14,14 @@
  *   limitations under the License.
  */
 
-namespace tensors{
-    class tensor{
+#include "tensors++/core/tensor.hpp"
 
-    };
-}
+using namespace tensors;
+
+bool tensor::finalize() {
+    if (!finalized) {
+      finalized = true;
+      return true;
+    } else
+      return false;
+  }
