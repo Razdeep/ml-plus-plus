@@ -17,51 +17,56 @@
 #ifndef TENSOR_HPP
 #define TENSOR_HPP
 
+#include <functional>
 #include <initializer_list>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "tensors++/core/tensor_config.hpp"
 
 namespace tensors {
 
-enum dtype { Int64, Int32, Float, Double };
-
+template <class dtype>
 class tensor {
   unsigned long long sze;
-  dtype typ;
   std::vector<int> shpe;
   bool is_frozen;
-  const config::Config& tensor_configuration;
-  std::vector<std::vector<int>> manager;
-  std::unique_ptr<void*> data;
-
+  const config::Config &tensor_configuration;
+  std::vector<std::vector<int>> axis_manager;
+  std::unique_ptr<dtype *> data;
 
  public:
-
   std::vector<int> shape() const { return shpe; }
   unsigned long long size() const { return sze; }
-  dtype data_type() const { return typ; }
+  std::string data_type() const { return typeid(dtype).name(); }
   config::Config tensor_config() { return tensor_configuration; }
 
-  virtual bool freeze() final; //should not be overriden
+  // helper methods
+  virtual bool freeze() final;  // should not be overriden
   virtual bool unfreeze() final;
   virtual tensor slice(std::initializer_list<int>);
   virtual bool reshape(std::initializer_list<int>);
+  virtual bool apply_lambda(
+      std::function<void(dtype)>);  // lambda or function that takes dtype and
+                                    // returns nothing
 
+  // casting elements to other dtypes
+   
 
-  //this is slicing operator
-  //all operations are element-wise
-  virtual tensor operator()(int points...); 
-  virtual tensor operator+(tensor &other);
-  virtual tensor operator++(int); //post
-  virtual tensor operator-(tensor &other);
-  virtual tensor operator*(tensor &other);
-  virtual tensor operator--(int); //post
+  //() is slicing operator
+  // all operations are element-wise and final
+  virtual tensor &operator()(std::initializer_list<int>);
 
-
+  virtual tensor &operator+(tensor &that) final;
+  virtual tensor &operator++() final;  
+  virtual tensor &operator-(const tensor &that) final;
+  virtual tensor &operator*(const tensor &that)final;
+  virtual tensor &operator--() final; 
+  virtual bool operator==(const tensor &that) final;
+  virtual tensor &operator+=(const tensor &that) final;
+  virtual tensor &operator-=(const tensor &that) final;
+  virtual tensor &operator*=(const tensor &that) final;
 };
-
 }  // namespace tensors
 
 #endif
