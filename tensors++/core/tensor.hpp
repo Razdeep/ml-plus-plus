@@ -241,7 +241,7 @@ class tensor {
 
   virtual bool broadcast(uint axis) final {
     if (this->tensor_configuration.is_broad_castable) {
-      //todo(coder3101) : Implement broadcast here
+      // todo(coder3101) : Implement broadcast here
       return true;
     } else
       return false;  // was not able to broadcast
@@ -249,14 +249,14 @@ class tensor {
 
   virtual bool broadcast(const tensor &that) final {
     if (this->tensor_configuration.is_broad_castable)
-          //todo(coder3101) : Implement broadcast here
+      // todo(coder3101) : Implement broadcast here
       return true;
     else
       return false;
   };
 
   // all operations are element-wise and final
-  virtual tensor &operator+(tensor &that) final {};
+  virtual tensor &operator+(tensor &that) final{};
   virtual tensor &operator++() final;
   virtual tensor &operator-(const tensor &that) final;
   virtual tensor &operator*(const tensor &that)final;
@@ -266,6 +266,28 @@ class tensor {
   virtual tensor &operator-=(const tensor &that) final;
   virtual tensor &operator*=(const tensor &that) final;
   virtual dtype operator[](indexer &p) final{};
+
+  // methods
+  virtual bool all(std::function<bool(dtype)>,
+                   int axis = -1) final;  // True is all evalute to true
+  virtual bool any(std::function<bool(dtype)>,
+                   int axis = -1) final;  // True if any true
+  virtual big_length argmax(int axis = -1) final;
+  virtual big_length argmin(int axis = -1) final;
+  virtual tensor clip(dtype max, dtype min) final;
+  virtual tensor copy();
+  virtual dtype cumulative_product(int axis = -1) final;
+  virtual dtype cumulative_sum(int axis = -1) final;
+  virtual tensor flatten() final;
+  virtual dtype max(int axis = -1) final;
+  virtual dtype min(int axis = -1) final;
+  virtual dtype mean(int axis = -1) final;
+  virtual dtype peek_to_peek(int axis = -1) final;  // max-min
+  virtual void ravel() final;
+  virtual void swap_axis(int axis1, int axis2) final;
+  virtual void squeeze() final;
+  virtual dtype sum(int axis = -1) final;
+  virtual dtype varience(int axis = -1) final;
 };
 }  // namespace tensors
 
