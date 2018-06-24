@@ -39,7 +39,7 @@ class bad_reshape : public std::exception {
 
  public:
   bad_reshape(std::string s, unsigned long long new_s,
-            unsigned long long original_s)
+              unsigned long long original_s)
       : message(s.c_str()), new_size(new_s), original(original_s){};
   virtual const char *what() const noexcept final override {
     std::string finalized_message =
@@ -58,6 +58,30 @@ class bad_slice : public std::exception {
   virtual const char *what() const noexcept final override {
     std::string finalized_message =
         "Unable to slice. Invalid slicer was provided" + message;
+    return finalized_message.c_str();
+  };
+};
+
+class bad_indexer : public std::exception {
+  std::string message;
+
+ public:
+  bad_indexer(std::string s) : message(s.c_str()){};
+  virtual const char *what() const noexcept final override {
+    std::string finalized_message =
+        "Unable to locate. Invalid Invalid Indexer was provided" + message;
+    return finalized_message.c_str();
+  };
+};
+
+class broadcast_error : public std::exception {
+  std::string message;
+
+ public:
+  broadcast_error(std::string s) : message(s.c_str()){};
+  virtual const char *what() const noexcept final override {
+    std::string finalized_message =
+        "Cannot broadcast the tensor. Dimensions mismatch : " + message;
     return finalized_message.c_str();
   };
 };
