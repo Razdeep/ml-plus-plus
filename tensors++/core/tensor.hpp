@@ -57,7 +57,6 @@ struct Slicer {
 }  // namespace slicer
 
 enum initializer { zeros, onces, random, uniform_gaussian, int_sequence, none };
-enum cast_types { ints, bools, floats, shorts, longs, doubles };
 
 typedef std::initializer_list<uint> indexer;
 
@@ -195,6 +194,7 @@ class tensor {
   }
 
   virtual tensor slice(slicer::Slicer &s) { s.validate(); }
+
   virtual bool reshape(std::initializer_list<int> &new_shape) {
     big_length ss = 1;
     int auto_shape = -1;
@@ -202,12 +202,12 @@ class tensor {
     for (auto &e : new_shape) {
       if (e == 0)
         throw exceptions::bad_reshape(
-            "New shape has an dimension with index ZERO.", 0, shpe);
+            "New shape has an dimension with index ZERO.", 0, sze);
 
       if (e < 0 && auto_shape) {
         throw exceptions::bad_reshape(
             "More than one dynamic size (-1) dimension found in reshape.", 0,
-            shpe);
+            sze);
       }
 
       if (e < 0) {
@@ -225,20 +225,38 @@ class tensor {
     else if (auto_shape != -1) {
       if (sze % ss == 0) {  // we can fit it dynamically
         uint dynamic_dimen = sze / ss;
-      }
+        shpe = new_shape;
+        *(shpe.begin() + auto_shape) = dynamic_dimen;
+      } else
+        throw exceptions::bad_reshape(
+            "Cannot dynamically fit the data. Size axis mismatch",
+            ss * (sze / ss), sze);
     } else
-      throw exceptions::bad_reshape("Invalid reshape arguments", new_shape,
-                                    shpe);
+      throw exceptions::bad_reshape("Invalid reshape arguments", 0, 0);
   };
-  virtual bool apply_lambda(std::function<void(dtype)>)
-      final;  // lambda or function that takes dtype and returns nothing
-  virtual bool cast_to(cast_types) final;  // casting elements to other dtypes
 
-  //() is slicing operator
+  virtual bool apply_lambda(std::function<void(dtype &)> op) final {
+    for (int k = 0; k < sze; k++) op(data[k]);
+  }
+
+  virtual bool broadcast(uint axis) final {
+    if (this->tensor_configuration.is_broad_castable) {
+      //todo(coder3101) : Implement broadcast here
+      return true;
+    } else
+      return false;  // was not able to broadcast
+  }
+
+  virtual bool broadcast(const tensor &that) final {
+    if (this->tensor_configuration.is_broad_castable)
+          //todo(coder3101) : Implement broadcast here
+      return true;
+    else
+      return false;
+  };
+
   // all operations are element-wise and final
-  virtual tensor &operator()(std::initializer_list<uint>);
-
-  virtual tensor &operator+(tensor &that) final;
+  virtual tensor &operator+(tensor &that) final {};
   virtual tensor &operator++() final;
   virtual tensor &operator-(const tensor &that) final;
   virtual tensor &operator*(const tensor &that)final;
