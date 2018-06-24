@@ -30,7 +30,7 @@ struct Config {
         cnf.is_freezeable = true;
         cnf.is_broad_castable = true;
         cnf.is_dynamic_sized = true;
-        cnf.static_allocation_limits = 100;
+        cnf.static_allocation_limits = 0; //force dynamic creation
         return cnf;
     }
 };
