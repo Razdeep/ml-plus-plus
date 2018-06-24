@@ -22,18 +22,6 @@
 
 namespace tensors {
 namespace exceptions {
-class freeze_exception : public std::exception {
-  std::string messages;
-
- public:
-  freeze_exception(std::string s) { messages = std::move(s); };
-  virtual const char *what() const noexcept final override {
-    return std::string(
-               "Trying to freeze a tensor that is marked non freezeable." +
-               messages)
-        .c_str();
-  };
-};
 
 class tensor_index_exception : public std::exception {
   const char *message;
