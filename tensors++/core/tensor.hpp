@@ -256,15 +256,23 @@ class tensor {
   };
 
   // all operations are element-wise and final
-  virtual tensor &operator+(tensor &that) final{};
+  virtual tensor &operator+(const tensor &that) final{};
+  virtual tensor &operator+(const dtype k) final{};
+
   virtual tensor &operator++() final;
-  virtual tensor &operator-(const tensor &that) final;
-  virtual tensor &operator*(const tensor &that)final;
   virtual tensor &operator--() final;
+
+  virtual tensor &operator-(const tensor &that) final;
+  virtual tensor &operator-(const dtype k) final{};
+
+  virtual tensor &operator*(const tensor &that)final;
+  virtual tensor &operator*(const dtype k) final{};
+
   virtual bool operator==(const tensor &that) final;
   virtual tensor &operator+=(const tensor &that) final;
   virtual tensor &operator-=(const tensor &that) final;
   virtual tensor &operator*=(const tensor &that) final;
+  
   virtual dtype operator[](indexer &p) final{};
 
   // methods
