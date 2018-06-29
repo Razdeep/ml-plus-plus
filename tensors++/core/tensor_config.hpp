@@ -21,16 +21,12 @@ namespace tensors {
 namespace config {
 struct Config {
     bool is_broad_castable; //can the tensor be broadcasted
-    bool is_dynamic_sized; //can we call reshape on the tensor
     bool is_freezeable; //can we freeze the tensor
-    int static_allocation_limits; // limit untill which we will use static allocation
 
     static const Config default_config_instance(){
         Config cnf;
         cnf.is_freezeable = true;
         cnf.is_broad_castable = true;
-        cnf.is_dynamic_sized = true;
-        cnf.static_allocation_limits = 0; //force dynamic creation
         return cnf;
     }
 };
