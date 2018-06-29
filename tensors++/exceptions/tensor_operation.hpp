@@ -86,5 +86,17 @@ class broadcast_error : public std::exception {
   };
 };
 
+class operation_undefined : public std::exception {
+  std::string message;
+
+ public:
+  operation_undefined(std::string s) : message(s.c_str()){};
+  virtual const char *what() const noexcept final override {
+    std::string finalized_message =
+        "The Operation is not defined : " + message;
+    return finalized_message.c_str();
+  };
+};
+
 }  // namespace exceptions
 }  // namespace tensors
