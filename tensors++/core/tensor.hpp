@@ -24,6 +24,11 @@
 #include <typeinfo>
 #include <vector>
 
+#define FULL \
+  (-1)  // this index value represents FULL selection a.slice(Slicer(3,FULL)) \
+       // ==> a[3:]
+
+#include "tensors++/core/shape.hpp"
 #include "tensors++/core/slicer.hpp"
 #include "tensors++/core/tensor_config.hpp"
 #include "tensors++/exceptions/tensor_formation.hpp"
@@ -31,50 +36,40 @@
 
 namespace tensors {
 
-enum initializer { zeros, onces, random, uniform_gaussian, int_sequence, none };
+enum initializer { zeros, onces, random, uniform_gaussian, int_sequence };
 
-typedef unsigned long long big_num;
-
-typedef std::initializer_list<uint> Indexer;
+typedef std::initializer_list<int> Indexer;
 
 template <class dtype = float>
 class tensor {
-  big_num sze;
-  std::vector<int> shpe;
+  shape::Shape shpe;
+  size_t element_count;
   std::vector<uint> cum_shpe;  // cumulative shape dimension
   const config::Config &tensor_configuration;
-  std::unique_ptr<dtype> data;
+  std::vector<dtype> data;
   initializer init_type;
+  bool is_frozen = false;
 
-  // private methods
-  void init_memory() {
-    if (sze > tensor_configuration.static_allocation_limits) {
-      data = new dtype[sze];
-    } else {
-      dtype s[sze];
-      data = s[0];
-    }
-  }
   void init_initializer() {
     try {
       switch (init_type) {
         case zeros: {
           dtype T(0);  // this may throw if no constructor with int
-          for (big_num i = 0; i < sze; i++) *(data + i) = T;
+          for (size_t i = 0; i < element_count; i++) data.push_back(T);
           break;
         }
         case onces: {
           dtype T(1);  // this may throw if no constructor with int
-          for (big_num i = 0; i < sze; i++) *(data + i) = T;
+          for (size_t i = 0; i < element_count; i++) data.push_back(T);
           break;
         }
         case uniform_gaussian: {
           std::random_device rd;
           std::mt19937 gen(rd);
           std::normal_distribution<> d(0.0, 1.0);  // mean =0, varience =1
-          for (big_num i = 0; i < sze; i++) {
+          for (size_t i = 0; i < element_count; i++) {
             dtype K(d(gen));  // this may throw if no constructor with float
-            *(data + i) = K;
+            data.push_back(K);
           }
           break;
         }
@@ -82,53 +77,59 @@ class tensor {
           std::random_device rd;
           std::mt19937 gen(rd);
           std::uniform_real_distribution<> dist(0.0, 1.0);  // from [0,1)
-          for (big_num i = 0; i < sze; i++) {
+          for (size_t i = 0; i < element_count; i++) {
             dtype K(dist(gen));  // this may throw if no constructor with float
-            *(data + i) = K;
+            data.push_back(K);
           }
           break;
         }
         case int_sequence: {
-          for (big_num i = 0; i < sze; i++) {
+          for (size_t i = 0; i < element_count; i++) {
             dtype K(static_cast<int>(i));
-            *(data + i) = K;
+            data.push_back(K);
           }
           break;
         }
-        case none:
-          // do nothing
-          break;
       };
     } catch (std::exception &e) {
       throw exceptions::initializer_exception(e.what());
     }
   }
-  void update_shape(std::vector<int> new_Shape) {
+
+  void update_shape(shape::Shape new_Shape) {
     shpe = new_Shape;
-    uint temp = new_Shape[0];
-    cum_shpe.push_back(new_Shape[0]);
-    for (int t = 1; t < new_Shape.size(); t++) {
-      cum_shpe.push_back(temp * new_Shape[t]);
-      temp *= new_Shape[t];
-    }
-  };
-  big_num to_flat_index(Indexer &s) {
+    cum_shpe = new_Shape.cumulative_shape();
+    element_count = shpe.element_size();
+  }
+
+  size_t to_flat_index(Indexer &s) {
     if (s.size() != shpe.size())
       throw exceptions::bad_indexer(
           "Cannot flatten this Indexer has dimen " + std::to_string(s.size()) +
           "and Tensor has dimen " + std::to_string(shpe.size()));
     else {
-      big_num ssf = 0;
-      for (int t = 0; t < shpe.size(); t++)
-        ssf += *(s.begin() + t) * cum_shpe[t];
+      size_t ssf = 0;
+      for (int t = 0; t < shpe.size(); t++) {
+        if (*(s.begin() + t) > shpe[t])
+          throw exceptions::bad_indexer(
+              "Index out of range for dimension" + std::to_string(t) +
+              "original tensor has shape index" +
+              std::to_string(shpe[t] + ". Indexer has indexed " +
+                             std::to_string(*(s.begin() + t))));
+        ssf += *(s.begin() + t) * (element_count / cum_shpe[t]);
+      }
       return ssf;
     }
   }
-  void resize_memory(uint new_sze) {
-    if (new_sze < tensor_configuration.static_allocation_limits &&
-        sze < tensor_configuration.static_allocation_limits) {
-      sze = new_sze;
-    }
+
+  void resize_shape(shape::Shape new_shape) {
+    size_t old = element_count;
+    size_t new_s = new_shape.element_size();
+    if (new_s > old)
+      for (size_t j = 0; j < (new_s - old); j++) data.push_back(dtype(0));
+    if (new_s < old)
+      for (size_t j = 0; j < (new_s - old); j++) data.pop_back();
+    update_shape(new_shape);
   }
 
  public:
@@ -136,22 +137,17 @@ class tensor {
 
   // tensor: Parameterized Constructor
   tensor(
-      std::initializer_list<int> shape,
+      shape::Shape shape,
       initializer init_method = initializer::uniform_gaussian,
       config::Config tensor_config = config::Config::default_config_instance())
       : tensor_configuration(tensor_config), init_type(init_method) {
-    sze = 1;
-    for (auto &e : shape) {
-      if (e <= 0)
-        throw exceptions::bad_init_shape("A dimension has invalid size " +
-                                         std::to_string(e));
-      else
-        sze *= e;
-    }
-
-    update_shape(shape);
-    init_memory();
-    init_initializer();
+    if (shape::Shape::is_initial_valid_shape(shape)) {
+      update_shape(shape);
+      init_initializer();
+    } else
+      throw exceptions::bad_init_shape(
+          "Invalid Shape. All dimensions in the shape must be natural numbers "
+          "(i.e > 0 )");
   }
 
   // tensor: Copy Constructor
@@ -159,36 +155,48 @@ class tensor {
 
   // tensor: Move Constructor, does not throw any exception
   tensor(tensor &&that) noexcept {
-    this->sze = std::move(that.sze);
+    this->element_count = std::move(that.element_count);
     this->shpe = std::move(that.shpe);
+    this->cum_shpe = std::move(that.cum_shape);
     this->is_frozen = std::move(that.is_frozen);
-    this->was_dynamically_created = std::move(that.was_dynamically_created);
     this->init_type = std::move(that.init_type);
     this->tensor_configuration = std::move(that.tensor_configuration);
     this->data = std::move(that.data);
   }
 
-  std::vector<int> shape() const { return shpe; }
-  big_num size() const { return sze; }
-  std::string data_type() const { return typeid(dtype).name(); }
-  config::Config tensor_config() const { return tensor_configuration; }
+  // inliners
+  inline shape::Shape shape() const { return shpe; }
+  inline size_t size() const { return element_count; }
+  inline std::string data_type() const { return typeid(dtype).name(); }
+  inline config::Config tensor_config() const { return tensor_configuration; }
+  inline void unfreeze() { is_frozen = false; }
 
-  virtual tensor slice(slicer::Slicer &s) { s.validate(); }
+  // methods
+  void freeze() {
+    if (this->tensor_configuration.is_freezeable)
+      is_frozen = true;
+    else
+      throw exceptions::operation_undefined(
+          "Cannot Freeze a tensor that is declared unfreezable by its "
+          "configuration.");
+  }
+
+  virtual tensor slice(slicer::Slicer &s) {}
 
   virtual bool reshape(std::initializer_list<int> &new_shape) {
-    big_num ss = 1;
+    size_t ss = 1;
     int auto_shape = -1;
     std::vector<int> ns = new_shape;
     int running_index = 0;
     for (auto &e : new_shape) {
       if (e == 0)
         throw exceptions::bad_reshape(
-            "New shape has an dimension with index ZERO.", 0, sze);
+            "New shape has an dimension with index ZERO.", 0, element_count);
 
       if (e < 0 && auto_shape) {
         throw exceptions::bad_reshape(
             "More than one dynamic size (-1) dimension found in reshape.", 0,
-            sze);
+            element_count);
       }
 
       if (e < 0) {
@@ -201,84 +209,198 @@ class tensor {
       ss *= e;
       running_index++;
     }
-    if (ss == sze)
-      update_shape(ns);
+    if (ss == element_count)
+      update_shape(shape::Shape(ns));
     else if (auto_shape != -1) {
-      if (sze % ss == 0) {
-        uint dynamic_dimen = sze / ss;
+      if (element_count % ss == 0) {
+        uint dynamic_dimen = element_count / ss;
         ns[auto_shape] = dynamic_dimen;
-        update_shape(ns);
+        update_shape(shape::Shape(ns));
       } else
         throw exceptions::bad_reshape(
             "Cannot dynamically fit the data. Size axis mismatch",
-            ss * (sze / ss), sze);
+            ss * (element_count / ss), element_count);
     } else
       throw exceptions::bad_reshape("Invalid reshape arguments", 0, 0);
   };
 
   virtual bool apply_lambda(std::function<void(dtype &)> op) final {
-    for (int k = 0; k < sze; k++) op(data[k]);
+    for (int k = 0; k < element_count; k++) op(data[k]);
   }
 
-  virtual bool broadcast(const tensor &that) final {
+  virtual tensor broadcast(const tensor &that) final {
+    /// Returns the broadcasted version of this tensor w.r.t that
     // todo(coder3101) : Implement the broadcasting
-    if (this->tensor_configuration.is_broad_castable) //{
-    //   uint lhs = this->shape().size();
-    //   uint rhs = that.shape().size();
-    //   if (lhs == rhs) {
-    //     for (int t = lhs; t <= 0; t--) {
-    //       if (this->shape()[t] != that.shape()[t] && this->shape()[t] != 1 &&
-    //           that.shape()[t] != 1)
-    //         throw exceptions::broadcast_error(
-    //             "Cannot broad-cast the two tensors.");
-    //       if (this->shape()[t] == that.shape()[t]) }
-    //   }
-    // }
-    return true;
-    else return false;
+    if (this->tensor_configuration.is_broad_castable) {
+      //   uint lhs = this->shape().size();
+      //   uint rhs = that.shape().size();
+      //   if (lhs == rhs) {
+      //     for (int t = lhs; t <= 0; t--) {
+      //       if (this->shape()[t] != that.shape()[t] && this->shape()[t] != 1
+      //       &&
+      //           that.shape()[t] != 1)
+      //         throw exceptions::broadcast_error(
+      //             "Cannot broad-cast the two tensors.");
+      //       if (this->shape()[t] == that.shape()[t]) }
+      //   }
+    } else
+      throw exceptions::broadcast_error("Cannot broadcast" + this->shape() +
+                                        " to : " + that.shape());
   };
 
   // all operations are element-wise and final
-  virtual tensor operator+(const tensor &that) final {}
+  virtual tensor operator+(const tensor &that) final {
+    if (that.shape() != this->shape() &&
+        !this->tensor_configuration.is_broad_castable &&
+        !that.tensor_configuration.is_broad_castable) {
+      throw exceptions::operation_undefined(
+          "Element wise addition is not defined when both tensors are "
+          "non-broadcastable and mismatch shape.");
+    } else {
+      if (shape::Shape::is_broadcastable_shape(*this, that)) {
+        try {
+          const tensor<dtype> &response = this->broadcast(that);
+          tensor<dtype> res(response.shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = response.data[i] + that.data[i];
+          return res;
+        } catch (exceptions::broadcast_error &e) {
+          const tensor<dtype> &response = that.broadcast(*this);
+          tensor<dtype> res(this->shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = this->data[i] + response.data[i];
+          return res;
+        }
+      } else
+        throw exceptions::broadcast_error("Cannot broadcast tensor of shapes " +
+                                          this->shape() + " and " +
+                                          that.shape());
+    }
+  }
   virtual tensor<dtype> operator+(const dtype &k) final {
-    tensor<dtype> result(this->shape(), initializer::none);
-    for (big_num t = 0; t < sze; t++) result.data[t] = this->data[t] + k;
+    tensor<dtype> result(this->shape());
+    for (size_t t = 0; t < element_count; t++)
+      result.data[t] = this->data[t] + k;
     return result;
   }
 
   virtual tensor<dtype> operator++() final {
-    for (big_num t = 0; t < sze; t++) data[t]++;
+    for (size_t t = 0; t < element_count; t++) data[t]++;
     return *this;
   }
   virtual tensor<dtype> &operator--() final {
-    for (big_num t = 0; t < sze; t++) data[t]--;
+    for (size_t t = 0; t < element_count; t++) data[t]--;
     return *this;
   };
 
-  virtual tensor operator-(const tensor &that) final;
+  virtual tensor operator-(const tensor &that) final {
+    if (that.shape() != this->shape() &&
+        !this->tensor_configuration.is_broad_castable &&
+        !that.tensor_configuration.is_broad_castable) {
+      throw exceptions::operation_undefined(
+          "Element wise addition is not defined when both tensors are "
+          "non-broadcastable and mismatch shape.");
+    } else {
+      if (shape::Shape::is_broadcastable_shape(*this, that)) {
+        try {
+          const tensor<dtype> &response = this->broadcast(that);
+          tensor<dtype> res(response.shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = response.data[i] - that.data[i];
+          return res;
+        } catch (exceptions::broadcast_error &e) {
+          const tensor<dtype> &response = that.broadcast(*this);
+          tensor<dtype> res(this->shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = this->data[i] - response.data[i];
+          return res;
+        }
+      } else
+        throw exceptions::broadcast_error("Cannot broadcast tensor of shapes " +
+                                          this->shape() + " and " +
+                                          that.shape());
+    }
+  }
   virtual tensor<dtype> operator-(const dtype &k) final {
-    tensor<dtype> result(this->shape(), initializer::none);
-    for (big_num t = 0; t < sze; t++) result.data[t] = this->data[t] - k;
+    tensor<dtype> result(this->shape());
+    for (size_t t = 0; t < element_count; t++)
+      result.data[t] = this->data[t] - k;
     return result;
   }
 
-  virtual tensor operator*(const tensor &that)final;
+  virtual tensor operator*(const tensor &that)final {
+    if (that.shape() != this->shape() &&
+        !this->tensor_configuration.is_broad_castable &&
+        !that.tensor_configuration.is_broad_castable) {
+      throw exceptions::operation_undefined(
+          "Element wise addition is not defined when both tensors are "
+          "non-broadcastable and mismatch shape.");
+    } else {
+      if (shape::Shape::is_broadcastable_shape(*this, that)) {
+        try {
+          const tensor<dtype> &response = this->broadcast(that);
+          tensor<dtype> res(response.shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = response.data[i] * that.data[i];
+          return res;
+        } catch (exceptions::broadcast_error &e) {
+          const tensor<dtype> &response = that.broadcast(*this);
+          tensor<dtype> res(this->shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = this->data[i] * response.data[i];
+          return res;
+        }
+      } else
+        throw exceptions::broadcast_error("Cannot broadcast tensor of shapes " +
+                                          this->shape() + " and " +
+                                          that.shape());
+    }
+  };
   virtual tensor<dtype> operator*(const dtype &k)final {
-    tensor<dtype> result(this->shape(), initializer::none);
-    for (big_num t = 0; t < sze; t++) result.data[t] = this->data[t] * k;
+    tensor<dtype> result(this->shape());
+    for (size_t t = 0; t < element_count; t++)
+      result.data[t] = this->data[t] * k;
     return result;
   }
 
-  virtual tensor operator/(const tensor &that) final;
+  virtual tensor operator/(const tensor &that) final {
+    if (that.shape() != this->shape() &&
+        !this->tensor_configuration.is_broad_castable &&
+        !that.tensor_configuration.is_broad_castable) {
+      throw exceptions::operation_undefined(
+          "Element wise addition is not defined when both tensors are "
+          "non-broadcastable and mismatch shape.");
+    } else {
+      if (shape::Shape::is_broadcastable_shape(*this, that)) {
+        try {
+          const tensor<dtype> &response = this->broadcast(that);
+          tensor<dtype> res(response.shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = response.data[i] / that.data[i];
+          return res;
+        } catch (exceptions::broadcast_error &e) {
+          const tensor<dtype> &response = that.broadcast(*this);
+          tensor<dtype> res(this->shape());
+          for (size_t i = 0; i < element_count; i++)
+            res.data[i] = this->data[i] / response.data[i];
+          return res;
+        }
+      } else
+        throw exceptions::broadcast_error("Cannot broadcast tensor of shapes " +
+                                          this->shape() + " and " +
+                                          that.shape());
+    }
+  };
   virtual tensor<dtype> operator/(const dtype &k) final {
-    tensor<dtype> result(this->shape(), initializer::none);
-    for (big_num t = 0; t < sze; t++) result.data[t] = this->data[t] / k;
+    tensor<dtype> result(this->shape());
+    for (size_t t = 0; t < element_count; t++)
+      result.data[t] = this->data[t] / k;
     return result;
   }
 
   virtual bool operator==(const tensor &that) final {
     if (this->shape() != that.shape()) return false;
-    for (big_num t = 0; t < sze; t++)
+    for (size_t t = 0; t < element_count; t++)
       if (this->data[t] != that.data[t]) return false;
 
     return true;
@@ -287,15 +409,15 @@ class tensor {
   virtual tensor &operator-=(const tensor &that) final;
   virtual tensor &operator*=(const tensor &that) final;
   virtual tensor &operator+=(const dtype &t) final {
-    for (big_num t = 0; t < sze; t++) data[t] += t;
+    for (size_t t = 0; t < element_count; t++) data[t] += t;
     return *this;
   }
   virtual tensor &operator-=(const dtype &t) final {
-    for (big_num t = 0; t < sze; t++) data[t] -= t;
+    for (size_t t = 0; t < element_count; t++) data[t] -= t;
     return *this;
   }
   virtual tensor &operator*=(const dtype &t) final {
-    for (big_num t = 0; t < sze; t++) data[t] *= t;
+    for (size_t t = 0; t < element_count; t++) data[t] *= t;
     return *this;
   }
   virtual dtype operator[](Indexer &p) final { return data[to_flat_index(p)]; };
@@ -305,8 +427,8 @@ class tensor {
                    int axis = -1) final;  // True is all evalute to true
   virtual bool any(std::function<bool(dtype)>,
                    int axis = -1) final;  // True if any true
-  virtual big_num argmax(int axis = -1) final;
-  virtual big_num argmin(int axis = -1) final;
+  virtual size_t argmax(int axis = -1) final;
+  virtual size_t argmin(int axis = -1) final;
   virtual tensor clip(dtype max, dtype min) final;
   virtual tensor copy();
   virtual dtype cumulative_product(int axis = -1) final;
