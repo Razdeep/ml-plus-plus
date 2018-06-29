@@ -26,9 +26,13 @@ struct Slicer {
   std::initializer_list<uint> start, stop;
   uint step;
 
+  Slicer() = delete;
+
   Slicer(std::initializer_list<uint> A, std::initializer_list<uint> B,
          uint x = 1)
-      : step(x), start(A), stop(B){};
+      : step(x), start(A), stop(B) {
+    validate();
+  };
 
   void validate() {
     if (start.size() != stop.size())
