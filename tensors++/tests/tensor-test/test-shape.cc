@@ -14,15 +14,67 @@
  *   limitations under the License.
  */
 
-#include<tensors++/core/shape.hpp>
-#include<gtest/gtest.h>
+#include <gtest/gtest.h>
+#include <string>
+#include <vector>
+#include "tensors++/core/shape.hpp"
 
-TEST(BroadcastingTest,SHAPE_TEST){
-    
+using namespace tensors::shape;
+
+TEST(Dimension, SHAPE_TEST) {
+  Shape s({3, 2, 4, 5});
+  Shape s2({3, 2, 4});
+  Shape s3({});
+  EXPECT_EQ(4, s.dimension());
+  EXPECT_EQ(3, s2.dimension());
+  EXPECT_EQ(0, s3.dimension());
 }
 
-int main(int argc, char **argv){
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+TEST(Element, SHAPE_TEST) {
+  Shape s({3, 2, 4, 6});
+  Shape s2({4, 6, 4, 46, 8, 3});
+  EXPECT_EQ(3, s[0]);
+  EXPECT_EQ(4, s[2]);
+  EXPECT_EQ(6, s2[1]);
+  EXPECT_EQ(3, s2[5]);
+  EXPECT_EQ(46, s2[3]);
 }
 
+TEST(Cumulative, SHAPE_TEST) {
+  Shape s({4, 1, 7, 1});
+  EXPECT_EQ(4, s.cumulative_shape()[0]);
+  EXPECT_EQ(4 * 1, s.cumulative_shape()[1]);
+  EXPECT_EQ(4 * 1 * 7, s.cumulative_shape()[2]);
+  EXPECT_EQ(4 * 1 * 7 * 1, s.cumulative_shape()[3]);
+}
+
+TEST(Equality, SHAPE_TEST) {
+  Shape s({5, 6, 4});
+  Shape s2({5, 6, 4});
+  Shape s3({4, 5, 6});
+  EXPECT_TRUE(s == s2);
+  EXPECT_FALSE(s == s3);
+}
+
+TEST(SizE, SHAPE_TEST) {
+  Shape s({5, 3, 6});
+  EXPECT_EQ(90, s.element_size());
+}
+
+TEST(Initial_Value_Test, SHAPE_TEST) {
+  std::vector<int> v = {4, -1, 9, -2};
+  Shape s(v);
+  EXPECT_FALSE(Shape::is_initial_valid_shape(s));
+}
+
+TEST(Stringify, SHAPE_TEST) {
+  Shape s({4, 5, 3});
+  EXPECT_EQ("(4, 5, 3)", static_cast<std::string>(s));
+  EXPECT_EQ("(9, 5, 6, 7, 6)",
+            static_cast<std::string>(Shape({9, 5, 6, 7, 6})));
+}
+
+int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

@@ -29,18 +29,23 @@ struct Shape {
   Shape(std::initializer_list<uint> s) { d = s; }
   Shape(std::vector<uint> s) : d(s) {}
   Shape(std::vector<int> s) {
-    for (auto &e : s) d.push_back(static_cast<uint>(e));
+    for (auto &e : s) {
+      if (e <= 0)
+        d.push_back(0);
+      else
+        d.push_back(static_cast<uint>(e));
+    }
   }
   Shape() = delete;
 
-  size_t size() const { return d.size(); }
+  size_t dimension() const { return d.size(); }
 
   std::vector<size_t> cumulative_shape() const {
     std::vector<size_t> res;
     size_t temp = 1;
     for (int t = 0; t < d.size(); t++) {
       temp *= d[t];
-      res[t] = temp;
+      res.push_back(temp);
     }
     return res;
   }
@@ -48,7 +53,8 @@ struct Shape {
   operator std::string() {
     std::string res = "(";
     for (auto &e : d) res += std::to_string(e) + ", ";
-    *(res.end() - 1) = ')';
+    *(res.end() - 2) = ')';
+    res = res.substr(0,res.size()-1);
     return res;
   }
 
