@@ -54,7 +54,7 @@ struct Shape {
     std::string res = "(";
     for (auto &e : d) res += std::to_string(e) + ", ";
     *(res.end() - 2) = ')';
-    res = res.substr(0,res.size()-1);
+    res = res.substr(0, res.size() - 1);
     return res;
   }
 
