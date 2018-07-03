@@ -24,10 +24,6 @@
 #include <typeinfo>
 #include <vector>
 
-#define FULL \
-  (-1)  // this index value represents FULL selection a.slice(Slicer(3,FULL)) \
-       // ==> a[3:]
-
 #include "tensors++/core/shape.hpp"
 #include "tensors++/core/slicer.hpp"
 #include "tensors++/core/tensor_config.hpp"
