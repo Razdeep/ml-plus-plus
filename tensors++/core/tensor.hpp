@@ -99,13 +99,13 @@ class tensor {
   }
 
   size_t to_flat_index(Indexer &s) {
-    if (s.size() != shpe.size())
+    if (s.size() != shpe.element_size())
       throw exceptions::bad_indexer(
           "Cannot flatten this Indexer has dimen " + std::to_string(s.size()) +
-          "and Tensor has dimen " + std::to_string(shpe.size()));
+          "and Tensor has dimen " + std::to_string(shpe.element_size()));
     else {
       size_t ssf = 0;
-      for (int t = 0; t < shpe.size(); t++) {
+      for (int t = 0; t < shpe.element_size(); t++) {
         if (*(s.begin() + t) > shpe[t])
           throw exceptions::bad_indexer(
               "Index out of range for dimension" + std::to_string(t) +
