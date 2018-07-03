@@ -22,6 +22,10 @@
 
 namespace tensors {
 namespace slicer {
+
+#define END (-1)
+#define BEGIN (-2)
+
 struct Slicer {
   std::initializer_list<uint> start, stop;
   uint step;
@@ -33,6 +37,19 @@ struct Slicer {
       : step(x), start(A), stop(B) {
     validate();
   };
+
+  Slicer(int full, std::initializer_list<uint> B, uint x = 1)
+      : step(x), stop(B) {
+    if (full != BEGIN) {
+      throw exceptions::bad_slice(
+          "Starting location is undefined. If you wish to slice from begin "
+          "first argument must be tensor::slice::BEGIN");
+    } else {
+      //int dimen = B.size();
+      //for (int t = 0; t < dimen; t++) *(start.begin() + t) = 0;
+      validate();
+    }
+  }
 
   void validate() {
     if (start.size() != stop.size())
