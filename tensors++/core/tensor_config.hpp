@@ -26,7 +26,6 @@ struct Config {
     static const Config default_config_instance(){
         Config cnf;
         cnf.is_freezeable = true;
-        cnf.is_broad_castable = true;
         return cnf;
     }
 };
