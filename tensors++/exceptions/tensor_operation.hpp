@@ -74,26 +74,27 @@ class bad_indexer : public std::exception {
   };
 };
 
-class broadcast_error : public std::exception {
-  std::string message;
-
- public:
-  broadcast_error(std::string s) : message(s.c_str()){};
-  virtual const char *what() const noexcept final override {
-    std::string finalized_message =
-        "Cannot broadcast the tensor. Dimensions mismatch : " + message;
-    return finalized_message.c_str();
-  };
-};
-
 class operation_undefined : public std::exception {
   std::string message;
 
  public:
   operation_undefined(std::string s) : message(s.c_str()){};
   virtual const char *what() const noexcept final override {
+    std::string finalized_message = "The Operation is not defined : " + message;
+    return finalized_message.c_str();
+  };
+};
+
+class axis_error : public std::exception {
+  int c, g;
+
+ public:
+  axis_error(int curr, int given) : c(curr), g(given){};
+  virtual const char *what() const noexcept final override {
     std::string finalized_message =
-        "The Operation is not defined : " + message;
+        "Cannot Provide this axis operation. Axis Invalid Axis. Axis limit is "
+        ": [0-" +
+        std::to_string(c) + "] . Provided Axis : " + std::to_string(g);
     return finalized_message.c_str();
   };
 };
