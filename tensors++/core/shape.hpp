@@ -20,6 +20,7 @@
 #include <initializer_list>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 namespace tensors {
 namespace shape {
@@ -50,6 +51,12 @@ struct Shape {
     return res;
   }
 
+  std::vector<size_t> reverse_cumulative_shape() const {
+    std::vector<size_t> res = cumulative_shape();
+    std::reverse(std::begin(res), std::end(res));
+    return res;
+  }
+
   operator std::string() {
     std::string res = "(";
     for (auto &e : d) res += std::to_string(e) + ", ";
@@ -67,8 +74,6 @@ struct Shape {
     return s;
   }
 
-  static bool is_broadcastable_shape(const Shape &other1, const Shape &other2) {
-  }
   static bool is_initial_valid_shape(const Shape &other) {
     for (auto &e : other.d)
       if (e <= 0) return false;
