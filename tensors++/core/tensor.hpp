@@ -187,9 +187,10 @@ class tensor {
 
   // methods
   void freeze() {
-    if (this->tensor_configuration.is_freezeable)
+    if (this->tensor_configuration.is_freezeable) {
       is_frozen = true;
-    else
+      this->data.shrink_to_fit();
+    } else
       throw exceptions::operation_undefined(
           "Cannot Freeze a tensor that is declared unfreezable by its "
           "configuration.");
