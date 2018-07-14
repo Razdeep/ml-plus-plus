@@ -22,6 +22,7 @@
 #include <memory>
 #include <random>
 #include <typeinfo>
+#include <algorithm>
 #include <vector>
 
 #include "tensors++/core/shape.hpp"
@@ -243,9 +244,9 @@ class tensor {
     for (int k = 0; k < element_count; k++) op(data[k]);
   }
 
-  virtual std::vector<std::vector<dtype&>> axis_wise(uint axis) final {
-    std::vector<dtype&> internal;
-    std::vector<std::vector<dtype&>> external;
+  virtual std::vector<std::vector<dtype &>> axis_wise(uint axis) final {
+    std::vector<dtype &> internal;
+    std::vector<std::vector<dtype &>> external;
     size_t repeat = shpe.reverse_cumulative_shape()[axis] / shpe[axis];
     size_t epoch = shpe.cumulative_shape()[axis] / shpe[axis];
     size_t current = shpe[axis];
@@ -271,7 +272,8 @@ class tensor {
   virtual tensor operator+(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise addition is not defined when both tensors are mismatch "
+          "Element wise addition is not defined when both tensors have "
+          "mismatch "
           "shape." +
           shpe + " and " + that.shape());
     } else {
@@ -300,7 +302,7 @@ class tensor {
   virtual tensor operator-(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise subtraction is not defined when both tensors are "
+          "Element wise subtraction is not defined when both tensors have "
           "mismatch "
           "shape." +
           shpe + " and " + that.shape());
@@ -320,7 +322,7 @@ class tensor {
   virtual tensor operator*(const tensor &that)final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise multiplication is not defined when both tensors are "
+          "Element wise multiplication is not defined when both tensors have "
           "mismatch "
           "shape." +
           shpe + " and " + that.shape());
@@ -340,7 +342,8 @@ class tensor {
   virtual tensor operator/(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise division is not defined when both tensors are mismatch "
+          "Element wise division is not defined when both tensors have "
+          "mismatch "
           "shape." +
           shpe + " and " + that.shape());
     } else {
@@ -366,7 +369,8 @@ class tensor {
   virtual tensor &operator+=(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise addition is not defined when both tensors are mismatch "
+          "Element wise addition is not defined when both tensors have "
+          "mismatch "
           "shape." +
           shpe + " and " + that.shape());
     } else {
@@ -377,7 +381,7 @@ class tensor {
   virtual tensor &operator-=(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise subtraction is not defined when both tensors are "
+          "Element wise subtraction is not defined when both tensors have "
           "mismatch "
           "shape." +
           shpe + " and " + that.shape());
@@ -389,7 +393,7 @@ class tensor {
   virtual tensor &operator*=(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise multiplication is not defined when both tensors are "
+          "Element wise multiplication is not defined when both tensors have "
           "mismatch "
           "shape." +
           shpe + " and " + that.shape());
@@ -401,7 +405,8 @@ class tensor {
   virtual tensor &operator/=(const tensor &that) final {
     if (that.shape() != shpe) {
       throw exceptions::operation_undefined(
-          "Element wise division is not defined when both tensors are mismatch "
+          "Element wise division is not defined when both tensors have "
+          "mismatch "
           "shape." +
           shpe + " and " + that.shape());
     } else {
@@ -452,10 +457,9 @@ class tensor {
       std::vector<uint> ns;
       for (int t = 0; t < shpe.dimension(); t++)
         if (axis != t) ns.push_back(shpe[t]);
-      std::vector<std::vector<dtype>> s = this->axis_wise(axis);
-      bool flag_broken = false;
+      std::vector<std::vector<dtype &>> s = this->axis_wise(axis);
       for (auto &k : s) {
-        for (int t = 0; t < s; t++) {
+        bool flag_broken = false;        for (int t = 0; t < s; t++) {
           if (!op(s[t])) {
             res.push_back(false);
             flag_broken = true;
@@ -482,9 +486,9 @@ class tensor {
       std::vector<uint> ns;
       for (int t = 0; t < shpe.dimension(); t++)
         if (axis != t) ns.push_back(shpe[t]);
-      std::vector<std::vector<dtype>> s = this->axis_wise(axis);
-      bool flag_broken = false;
+      std::vector<std::vector<dtype &>> s = this->axis_wise(axis);
       for (auto &k : s) {
+        bool flag_broken = false;
         for (int t = 0; t < s; t++) {
           if (op(s[t])) {
             res.push_back(true);
