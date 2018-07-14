@@ -243,9 +243,9 @@ class tensor {
     for (int k = 0; k < element_count; k++) op(data[k]);
   }
 
-  virtual std::vector<std::vector<dtype>> axis_wise(uint axis) final {
-    std::vector<dtype> internal;
-    std::vector<std::vector<dtype>> external;
+  virtual std::vector<std::vector<dtype&>> axis_wise(uint axis) final {
+    std::vector<dtype&> internal;
+    std::vector<std::vector<dtype&>> external;
     size_t repeat = shpe.reverse_cumulative_shape()[axis] / shpe[axis];
     size_t epoch = shpe.cumulative_shape()[axis] / shpe[axis];
     size_t current = shpe[axis];
