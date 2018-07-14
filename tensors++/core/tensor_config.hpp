@@ -20,12 +20,13 @@
 namespace tensors {
 namespace config {
 struct Config {
-    bool is_broad_castable; //can the tensor be broadcasted
+    bool grad_required; //do we need to compute grads to this tensor
     bool is_freezeable; //can we freeze the tensor
 
     static const Config default_config_instance(){
         Config cnf;
         cnf.is_freezeable = true;
+        cnf.grad_required = false;
         return cnf;
     }
 };
