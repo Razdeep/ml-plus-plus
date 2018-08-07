@@ -14,17 +14,16 @@
  *   limitations under the License.
  */
 
-//#include "tensors++/core/tensor.hpp"
+#include "tensors++/core/tensor.hpp"
 #include <gtest/gtest.h>
 
-TEST(FOO, BAR){
-    ASSERT_EQ(5,5);
-}
+TEST(FOO, BAR) {}
 
-int main(int argc, char **argv){
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+int main(int argc, char **argv) {
+  testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
 
 // TO RUN A TEST : g++ -pthread file.cc -lgtest -lgtest_main
+// alternatively you can use the test  runner executable.
 // Run the output file a.out to see the results of test.
